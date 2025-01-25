@@ -14,3 +14,4 @@ FROM (
         CONCAT(Currency, ' ', 'CR 01') UNION ALL
         SELECT DISTINCT 
         CONCAT(Currency, ' ', 'FX 01 
+``
