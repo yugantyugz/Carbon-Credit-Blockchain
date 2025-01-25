@@ -1,47 +1,17 @@
-import ibm_db
 import pandas as pd
 
-# Step 1: Connect to the Db2 database
-dsn = (
-    "DATABASE=your_database_name;"
-    "HOSTNAME=your_hostname;"
-    "PORT=50000;"
-    "PROTOCOL=TCPIP;"
-    "UID=your_username;"
-    "PWD=your_password;"
-)
-conn = ibm_db.connect(dsn, "", "")
+# Step 1: Convert stmt (list of dictionaries) into a Pandas DataFrame
+# Example stmt data structure:
+# stmt = [
+#     {'CURRENCY': 'USD', 'METRIC': 'PV01'},
+#     {'CURRENCY': 'EUR', 'METRIC': 'PV01'},
+#     {'CURRENCY': 'USD', 'METRIC': 'EQ 01'},
+#     {'CURRENCY': 'GBP', 'METRIC': 'CR 01'},
+#     # Add more rows here...
+# ]
+df = pd.DataFrame(stmt)
 
-if not conn:
-    raise Exception("Unable to connect to the database.")
-
-# Step 2: Fetch unique currencies and metrics
-query = """
-SELECT DISTINCT
-    Currency, 'PV01' AS Metric FROM sensitivity
-UNION ALL
-SELECT DISTINCT
-    Currency, 'EQ 01' FROM sensitivity
-UNION ALL
-SELECT DISTINCT
-    Currency, 'CR 01' FROM sensitivity
-UNION ALL
-SELECT DISTINCT
-    Currency, 'FX 01' FROM sensitivity;
-"""
-
-# Fetch data from the database
-stmt = ibm_db.exec_immediate(conn, query)
-rows = []
-row = ibm_db.fetch_assoc(stmt)
-while row:
-    rows.append(row)
-    row = ibm_db.fetch_assoc(stmt)
-
-# Convert the result into a Pandas DataFrame
-df = pd.DataFrame(rows)
-
-# Step 3: Generate the SQL query dynamically
+# Step 2: Generate the SQL query dynamically
 columns = []
 for _, row in df.iterrows():
     currency = row['CURRENCY']
@@ -50,7 +20,7 @@ for _, row in df.iterrows():
     case_statement = f"MAX(CASE WHEN Currency = '{currency}' AND Metric = '{metric}' THEN Value END) AS {col_name}"
     columns.append(case_statement)
 
-# Construct the final SQL query
+# Step 3: Construct the final SQL query
 final_query = f"""
 SELECT
     ID,
@@ -63,6 +33,3 @@ GROUP BY ID, Name;
 # Step 4: Output the dynamically generated query
 print("Generated SQL Query:")
 print(final_query)
-
-# Optional: Close the database connection
-ibm_db.close(conn)
