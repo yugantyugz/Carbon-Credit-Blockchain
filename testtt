@@ -1,17 +1,38 @@
-DECLARE @sql NVARCHAR(MAX)
-DECLARE @columns NVARCHAR(MAX)
-DECLARE @pivotedColumns NVARCHAR(MAX)
+-- Declare variables to hold the dynamic query parts
+DECLARE v_columns VARCHAR(4000);
+DECLARE v_sql VARCHAR(4000);
 
--- Generate the dynamic column list for all currencies and metrics
-SELECT 
-    @columns = STRING_AGG(QUOTENAME(Currency + ' ' + Metric), ',') 
+-- Step 1: Dynamically generate column names
+WITH CTE AS (
+  SELECT DISTINCT
+    Currency || ' PV01' AS col_name FROM sensitivity
+  UNION ALL
+  SELECT DISTINCT
+    Currency || ' EQ 01' FROM sensitivity
+  UNION ALL
+  SELECT DISTINCT
+    Currency || ' CR 01' FROM sensitivity
+  UNION ALL
+  SELECT DISTINCT
+    Currency || ' FX 01' FROM sensitivity
+)
+SELECT LISTAGG(QUOTENAME(col_name), ', ') WITHIN GROUP (ORDER BY col_name)
+INTO v_columns
+FROM CTE;
+
+-- Step 2: Build the Dynamic SQL Query
+SET v_sql = 'SELECT ID, Name, ' || v_columns || '
 FROM (
-    SELECT DISTINCT 
-        CONCAT(Currency, ' ', 'PV01') AS Metric UNION ALL
-        SELECT DISTINCT 
-        CONCAT(Currency, ' ', 'EQ 01') UNION ALL
-        SELECT DISTINCT 
-        CONCAT(Currency, ' ', 'CR 01') UNION ALL
-        SELECT DISTINCT 
-        CONCAT(Currency, ' ', 'FX 01 
-``
+  SELECT ID, Name, Currency || '' '' || Metric AS col_name, Value
+  FROM sensitivity
+  UNPIVOT (
+    Value FOR Metric IN (PV01, EQ 01, CR 01, FX 01)
+  )
+) src
+PIVOT (
+  MAX(Value) FOR col_name IN (' || v_columns || ')
+) AS pvt';
+
+-- Step 3: Execute the SQL Query
+PREPARE stmt FROM v_sql;
+EXECUTE stmt;
