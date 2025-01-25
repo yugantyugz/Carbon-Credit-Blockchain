@@ -1,0 +1,16 @@
+DECLARE @sql NVARCHAR(MAX)
+DECLARE @columns NVARCHAR(MAX)
+DECLARE @pivotedColumns NVARCHAR(MAX)
+
+-- Generate the dynamic column list for all currencies and metrics
+SELECT 
+    @columns = STRING_AGG(QUOTENAME(Currency + ' ' + Metric), ',') 
+FROM (
+    SELECT DISTINCT 
+        CONCAT(Currency, ' ', 'PV01') AS Metric UNION ALL
+        SELECT DISTINCT 
+        CONCAT(Currency, ' ', 'EQ 01') UNION ALL
+        SELECT DISTINCT 
+        CONCAT(Currency, ' ', 'CR 01') UNION ALL
+        SELECT DISTINCT 
+        CONCAT(Currency, ' ', 'FX 01 
