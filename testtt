@@ -1,38 +1,68 @@
--- Declare variables to hold the dynamic query parts
-DECLARE v_columns VARCHAR(4000);
-DECLARE v_sql VARCHAR(4000);
+import ibm_db
+import pandas as pd
 
--- Step 1: Dynamically generate column names
-WITH CTE AS (
-  SELECT DISTINCT
-    Currency || ' PV01' AS col_name FROM sensitivity
-  UNION ALL
-  SELECT DISTINCT
-    Currency || ' EQ 01' FROM sensitivity
-  UNION ALL
-  SELECT DISTINCT
-    Currency || ' CR 01' FROM sensitivity
-  UNION ALL
-  SELECT DISTINCT
-    Currency || ' FX 01' FROM sensitivity
+# Step 1: Connect to the Db2 database
+dsn = (
+    "DATABASE=your_database_name;"
+    "HOSTNAME=your_hostname;"
+    "PORT=50000;"
+    "PROTOCOL=TCPIP;"
+    "UID=your_username;"
+    "PWD=your_password;"
 )
-SELECT LISTAGG(QUOTENAME(col_name), ', ') WITHIN GROUP (ORDER BY col_name)
-INTO v_columns
-FROM CTE;
+conn = ibm_db.connect(dsn, "", "")
 
--- Step 2: Build the Dynamic SQL Query
-SET v_sql = 'SELECT ID, Name, ' || v_columns || '
-FROM (
-  SELECT ID, Name, Currency || '' '' || Metric AS col_name, Value
-  FROM sensitivity
-  UNPIVOT (
-    Value FOR Metric IN (PV01, EQ 01, CR 01, FX 01)
-  )
-) src
-PIVOT (
-  MAX(Value) FOR col_name IN (' || v_columns || ')
-) AS pvt';
+if not conn:
+    raise Exception("Unable to connect to the database.")
 
--- Step 3: Execute the SQL Query
-PREPARE stmt FROM v_sql;
-EXECUTE stmt;
+# Step 2: Fetch unique currencies and metrics
+query = """
+SELECT DISTINCT
+    Currency, 'PV01' AS Metric FROM sensitivity
+UNION ALL
+SELECT DISTINCT
+    Currency, 'EQ 01' FROM sensitivity
+UNION ALL
+SELECT DISTINCT
+    Currency, 'CR 01' FROM sensitivity
+UNION ALL
+SELECT DISTINCT
+    Currency, 'FX 01' FROM sensitivity;
+"""
+
+# Fetch data from the database
+stmt = ibm_db.exec_immediate(conn, query)
+rows = []
+row = ibm_db.fetch_assoc(stmt)
+while row:
+    rows.append(row)
+    row = ibm_db.fetch_assoc(stmt)
+
+# Convert the result into a Pandas DataFrame
+df = pd.DataFrame(rows)
+
+# Step 3: Generate the SQL query dynamically
+columns = []
+for _, row in df.iterrows():
+    currency = row['CURRENCY']
+    metric = row['METRIC']
+    col_name = f'"{currency} {metric}"'
+    case_statement = f"MAX(CASE WHEN Currency = '{currency}' AND Metric = '{metric}' THEN Value END) AS {col_name}"
+    columns.append(case_statement)
+
+# Construct the final SQL query
+final_query = f"""
+SELECT
+    ID,
+    Name,
+    {', '.join(columns)}
+FROM sensitivity
+GROUP BY ID, Name;
+"""
+
+# Step 4: Output the dynamically generated query
+print("Generated SQL Query:")
+print(final_query)
+
+# Optional: Close the database connection
+ibm_db.close(conn)
