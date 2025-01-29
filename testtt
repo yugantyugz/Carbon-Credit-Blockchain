@@ -1,33 +1,43 @@
 import pandas as pd
 
-# Sample data (replace this with your actual data)
+# Sample data
 data = {
     'ID': [1, 1, 1, 2, 2],
     'Name': ['abc', 'abc', 'abc', 'cvc', 'cvc'],
     'Currency': ['USD', 'EUR', 'GBP', 'JPY', 'USD'],
+    'Issuer_Rating': ['AAA', 'BB', 'NR', 'A', 'CCC'],  # Ratings
     'PV01': [23, 2312, None, None, 12],
     'EQ 01': [0, 12, 2, 4325, 1221],
     'CR 01': [213, 32, 0, None, 0],
     'FX 01': [12, 213, 0, 54, 34]
 }
 
-# Convert the data to a Pandas DataFrame
+# Convert to DataFrame
 df = pd.DataFrame(data)
 
-# Step 1: Get unique combinations of Currency and Metric
-metrics = ['PV01', 'EQ 01', 'CR 01', 'FX 01']
-currencies = df['Currency'].unique()
+# Step 1: Define IG and NIG criteria
+ig_ratings = ['AAA', 'AA', 'A', 'BBB']  # Investment grade
+nig_ratings = ['BB', 'B', 'CCC', 'CC', 'C', 'D', 'NR']  # Non-investment grade
 
-# Step 2: Generate the SQL query dynamically for each currency and metric
+# Step 2: Get unique currencies and metrics
+currencies = df['Currency'].unique()
+metrics = ['PV01', 'EQ 01', 'CR 01', 'FX 01']
+
+# Step 3: Generate the SQL query dynamically
 columns = []
 for currency in currencies:
     for metric in metrics:
-        # Create column names like "USD PV01", "EUR PV01", etc.
-        column_name = f'"{currency} {metric}"'
-        case_statement = f"MAX(CASE WHEN Currency = '{currency}' AND Metric = '{metric}' THEN {metric} END) AS {column_name}"
-        columns.append(case_statement)
+        # IG columns
+        ig_column = f'"IG {currency} {metric}"'
+        ig_case = f"MAX(CASE WHEN Currency = '{currency}' AND Issuer_Rating IN ({', '.join([f\"'{r}'\" for r in ig_ratings])}) THEN {metric} END) AS {ig_column}"
+        columns.append(ig_case)
 
-# Step 3: Construct the final SQL query
+        # NIG columns
+        nig_column = f'"NIG {currency} {metric}"'
+        nig_case = f"MAX(CASE WHEN Currency = '{currency}' AND Issuer_Rating IN ({', '.join([f\"'{r}'\" for r in nig_ratings])}) THEN {metric} END) AS {nig_column}"
+        columns.append(nig_case)
+
+# Step 4: Construct the final SQL query
 final_query = f"""
 SELECT
     ID,
