@@ -4,16 +4,16 @@
             SUM(
                 (ABS(row) > 
                     VLOOKUP(
-                        MID(TEXTJOIN(" ",,DataTable[[#Headers], [IG US]:[NIG Spain]]), 
-                            FIND(" ", TEXTJOIN(" ",,DataTable[[#Headers], [IG US]:[NIG Spain]])) + 1, 
-                            LEN(TEXTJOIN(" ",,DataTable[[#Headers], [IG US]:[NIG Spain]]))
+                        MID(TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]]), 
+                            FIND(" ", TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]])) + 1, 
+                            LEN(TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]]))
                         ), 
                         Thresholds!$A$2:$E$60, 
-                        MATCH(DataTable[[#Headers], [IG US]:[NIG Spain]], Thresholds!$A$1:$A$60, 0) + 1, 
+                        MATCH(MID(TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]]), FIND(" ", TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]])) + 1, LEN(TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]]))), Thresholds!$A$2:$A$60, 0) + 1, 
                         FALSE
                     ) * 1
                 )
-            ) > 0
+            )
         )
-    )
+    ) > 0
 )
