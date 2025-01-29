@@ -1,10 +1,15 @@
-=TEXTJOIN(", ", TRUE, LAMBDA(row, 
-    TEXTJOIN(", ", TRUE, 
-        FILTER(
-            DataTable[[#Headers], [IG US]:[NIG Spain]], 
-            ABS(row) > 
-            VLOOKUP(DataTable[[#Headers], [IG US]:[NIG Spain]], Thresholds!$A$2:$E$60, 
-                MATCH(DataTable[[#Headers], [IG US]:[NIG Spain]], Thresholds!$A$1:$A$60, 0) + 1, FALSE)
-        )
+=FILTER(DataTable[Name], 
+    BYROW(DataTable[@[IG US]:[NIG Spain]], 
+        LAMBDA(row, SUM((ABS(row) > BYCOL(DataTable[@[IG US]:[NIG Spain]], 
+            LAMBDA(col, VLOOKUP(
+                MID(TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]]), FIND(" ", TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]])) + 1, LEN(TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]]))), 
+                Thresholds!$A$1:$E$100, 
+                CHOOSE(1 + (LEFT(TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]]), 3) = "IG"),  
+                    2 + (col < 0),  
+                    3 + (col < 0)
+                ), 
+                FALSE
+            )) * 1)
+        )) > 0
     )
-)(DataTable[@[IG US]:[NIG Spain]]))
+)
