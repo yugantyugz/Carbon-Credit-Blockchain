@@ -1,9 +1,10 @@
-=IFERROR(
+=TEXTJOIN(", ", TRUE, LAMBDA(row, 
     TEXTJOIN(", ", TRUE, 
-        IF(ABS(DataTable[@[IG US]:[NIG Spain]]) > VLOOKUP(DataTable[[#Headers], [IG US]:[NIG Spain]], Thresholds!$A$2:$E$60, 
-            MATCH(DataTable[[#Headers], [IG US]:[NIG Spain]], Thresholds!$A$1:$A$60, 0) + 1, FALSE),
-            DataTable[[#Headers], [IG US]:[NIG Spain]]
+        FILTER(
+            DataTable[[#Headers], [IG US]:[NIG Spain]], 
+            ABS(row) > 
+            VLOOKUP(DataTable[[#Headers], [IG US]:[NIG Spain]], Thresholds!$A$2:$E$60, 
+                MATCH(DataTable[[#Headers], [IG US]:[NIG Spain]], Thresholds!$A$1:$A$60, 0) + 1, FALSE)
         )
-    ), 
-    ""
-)
+    )
+)(DataTable[@[IG US]:[NIG Spain]]))
