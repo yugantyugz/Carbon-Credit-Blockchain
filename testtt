@@ -1,19 +1,21 @@
-=FILTER(DataTable[Name], 
-    BYROW(DataTable[@[IG US]:[NIG Spain]], 
-        LAMBDA(row, 
-            SUM(
+=BYROW(DataTable[@[Copper]:[Silver]], 
+    LAMBDA(row, 
+        TEXTJOIN(", ", TRUE, 
+            FILTER(DataTable[[#Headers],[Copper]:[Silver]], 
                 (ABS(row) > 
-                    VLOOKUP(
-                        MID(TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]]), 
-                            FIND(" ", TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]])) + 1, 
-                            LEN(TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]]))
-                        ), 
-                        Thresholds!$A$2:$E$60, 
-                        MATCH(MID(TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]]), FIND(" ", TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]])) + 1, LEN(TEXTJOIN(" ",,DataTable[[#Headers],[IG US]:[NIG Spain]]))), Thresholds!$A$2:$A$60, 0) + 1, 
-                        FALSE
-                    ) * 1
+                    IFNA(VLOOKUP(DataTable[[#Headers],[Copper]:[Silver]], Thresholds!$A$1:$C$100, 
+                        IF(row > 0, 2, 3), FALSE), 1E+10)
                 )
-            )
+            ) 
+            & " (" & 
+            FILTER(row - IFNA(VLOOKUP(DataTable[[#Headers],[Copper]:[Silver]], Thresholds!$A$1:$C$100, 
+                        IF(row > 0, 2, 3), FALSE), 1E+10), 
+                (ABS(row) > 
+                    IFNA(VLOOKUP(DataTable[[#Headers],[Copper]:[Silver]], Thresholds!$A$1:$C$100, 
+                        IF(row > 0, 2, 3), FALSE), 1E+10)
+                )
+            ) 
+            & ")"
         )
-    ) > 0
+    )
 )
