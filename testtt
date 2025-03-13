@@ -1,21 +1,98 @@
-=BYROW(DataTable[@[Copper]:[Silver]], 
-    LAMBDA(row, 
-        TEXTJOIN(", ", TRUE, 
-            FILTER(DataTable[[#Headers],[Copper]:[Silver]], 
-                (ABS(row) > 
-                    IFNA(VLOOKUP(DataTable[[#Headers],[Copper]:[Silver]], Thresholds!$A$1:$C$100, 
-                        IF(row > 0, 2, 3), FALSE), 1E+10)
-                )
-            ) 
-            & " (" & 
-            FILTER(row - IFNA(VLOOKUP(DataTable[[#Headers],[Copper]:[Silver]], Thresholds!$A$1:$C$100, 
-                        IF(row > 0, 2, 3), FALSE), 1E+10), 
-                (ABS(row) > 
-                    IFNA(VLOOKUP(DataTable[[#Headers],[Copper]:[Silver]], Thresholds!$A$1:$C$100, 
-                        IF(row > 0, 2, 3), FALSE), 1E+10)
-                )
-            ) 
-            & ")"
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import sqlalchemy #for database connection
+from sqlalchemy import create_engine, text
+
+# Database Connection (Replace with your credentials)
+@st.cache_resource
+def init_connection():
+    engine = create_engine("your_database_connection_string") #example: "postgresql://user:password@host/database"
+    return engine
+
+engine = init_connection()
+
+# Data Fetching (Replace with your SQL queries)
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def fetch_data(date, id, comparison_date=None):
+    with engine.connect() as conn:
+        query = text(
+            """
+            SELECT *
+            FROM your_table
+            WHERE date = :date AND ID = :id
+            """
         )
-    )
-)
+        df_raw = pd.read_sql_query(query, conn, params={"date": date, "id": id})
+
+        if comparison_date:
+            comparison_query = text(
+                """
+                SELECT *
+                FROM your_table
+                WHERE date = :date AND ID = :id
+                """
+            )
+            df_comparison = pd.read_sql_query(comparison_query, conn, params={"date": comparison_date, "id": id})
+            return df_raw, df_comparison
+
+        return df_raw, None
+
+# Sidebar Inputs
+st.sidebar.title("Filters")
+selected_date = st.sidebar.date_input("Select Date")
+selected_id = st.sidebar.number_input("Enter ID", min_value=0)
+comparison_date = st.sidebar.date_input("Comparison Date (Optional)", value=None)
+
+# Data Fetching
+df_raw, df_comparison = fetch_data(selected_date, selected_id, comparison_date)
+
+if df_raw is None or df_raw.empty:
+    st.warning("No data found for the selected date and ID.")
+    st.stop()
+
+# Main Content
+st.title("Trade Analysis Dashboard")
+
+# Top Trade IDs (Drill-Down)
+st.subheader("Top Trade IDs by Product and Asset Type")
+
+# Grouping and Aggregation (Flexible Metrics)
+metrics = st.multiselect("Select Metrics", ["MTM", "Notional", "Volume", "Price"], default=["MTM"])
+
+# Group by Product and Asset Type
+grouped = df_raw.groupby(["asset_type", "product"])
+
+# Display as Expanders
+for (asset, product), group in grouped:
+    with st.expander(f"{asset} - {product}"):
+        # Top IDs for this product and asset
+        top_ids = group.groupby("ID")[metrics].sum().sort_values(by=metrics, ascending=False).head(10)
+        st.dataframe(top_ids)
+
+        # Optional Drill-Down (Example: Time Series)
+        if st.checkbox(f"Show Time Series for {asset} - {product}"):
+            for id_val in top_ids.index:
+                id_data = group[group["ID"]==id_val]
+                if 'timestamp' in id_data.columns:
+                    fig = px.line(id_data, x="timestamp", y=metrics, title=f"Time Series for ID {id_val}")
+                    st.plotly_chart(fig)
+                else:
+                    st.write("Timestamp column not found")
+
+# Comparison Data (If Provided)
+if df_comparison is not None:
+    st.subheader(f"Comparison Data ({comparison_date})")
+    # Add comparison analysis here (e.g., difference calculations, charts)
+    # Example: comparing MTM.
+    if "MTM" in df_raw.columns and "MTM" in df_comparison.columns:
+        merged_df = pd.merge(df_raw[['ID','MTM']], df_comparison[['ID','MTM']], on='ID', suffixes=('_selected', '_comparison'))
+        merged_df['MTM_difference'] = merged_df['MTM_selected'] - merged_df['MTM_comparison']
+        st.dataframe(merged_df)
+
+# Future Scalability
+# - Add more tabs for different analysis sections.
+# - Implement user authentication and role-based access control.
+# - Use Streamlit's session state for advanced state management.
+# - Build functions to generate and display more complicated charts.
+# - add more filters.
