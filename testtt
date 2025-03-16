@@ -1,1 +1,29 @@
-INDEX(MATCH)
+=IFERROR(
+    CHOOSECOLS(
+        FILTER(
+            Credit,
+            MMULT(
+                (
+                    (Credit[[IG UNITED KINGDOM]:[NIG CAYMAN ISLANDS]] > 0)
+                    * (Credit[[IG UNITED KINGDOM]:[NIG CAYMAN ISLANDS]] > IFNA(VLOOKUP(
+                        IF(LEFT(Credit[#Headers],3)="NIG","NIG ","IG ") & TRIM(MID(Credit[#Headers],4,99)),
+                        'Credit Threshold'!$D$10:$P$43,
+                        IF(LEFT(Credit[#Headers],3)="NIG",2,4),
+                        FALSE
+                    ),$A$19))
+                )
+                + (
+                    (Credit[[IG UNITED KINGDOM]:[NIG CAYMAN ISLANDS]] < IFNA(VLOOKUP(
+                        IF(LEFT(Credit[#Headers],3)="NIG","NIG ","IG ") & TRIM(MID(Credit[#Headers],4,99)),
+                        'Credit Threshold'!$D$10:$P$43,
+                        IF(LEFT(Credit[#Headers],3)="NIG",3,5),
+                        FALSE
+                    ),-$A$19))
+                ),
+                SEQUENCE(COLUMNS(Credit[[IG UNITED KINGDOM]:[NIG CAYMAN ISLANDS]]),,1,0)
+            ) > 0
+        ),
+        3, 4, 19, 20, 33, 197
+    ),
+    "No Names above threshold"
+)
