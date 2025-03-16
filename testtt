@@ -1,1 +1,4 @@
-Index)MATCH)
+=INDEX('Credit Threshold'!$E$10:$P$43,
+       MATCH(IF(LEFT(Credit[[#Headers],[IG UNITED KINGDOM]:[NIG CAYMAN ISLANDS]],3)="NIG","NIG","IG " & TRIM(MID(Credit[[#Headers],[IG UNITED KINGDOM]:[NIG CAYMAN ISLANDS]],4,999))), 'Credit Threshold'!$D$10:$D$43, 0),
+       MATCH(Credit[[#Headers],[IG UNITED KINGDOM]:[NIG CAYMAN ISLANDS]],Credit[[#Headers],[IG UNITED KINGDOM]:[NIG CAYMAN ISLANDS]],0)
+)
